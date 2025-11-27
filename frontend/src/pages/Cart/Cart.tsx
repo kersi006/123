@@ -21,17 +21,18 @@ export const Cart = () => {
       return;
     }
 
-    if (items.length !== 1) {
-      warning(t('cart.canBuyOneGame'));
+    if (items.length === 0) {
+      warning(t('cart.empty'));
       return;
     }
 
     try {
-      const game = items[0].game;
-      await api.createOrder({
-        user_id: currentUser.id,
-        game_id: game.id,
-      });
+      for (const item of items) {
+        await api.createOrder({
+          user_id: currentUser.id,
+          game_id: item.game.id,
+        });
+      }
 
       success(t('cart.checkoutSuccess'));
       clearCart();
@@ -115,6 +116,11 @@ export const Cart = () => {
             <h3 className="summary-title">{t('cart.summary')}</h3>
 
             <div className="summary-details">
+              <div className="summary-row">
+                <span>{t('cart.itemsCount')}</span>
+                <span>{items.length}</span>
+              </div>
+              <div className="summary-divider"></div>
               <div className="summary-row summary-total">
                 <span>{t('cart.total')}</span>
                 <span>₽{getTotalPrice().toFixed(2)}</span>

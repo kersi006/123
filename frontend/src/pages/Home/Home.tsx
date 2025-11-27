@@ -1,30 +1,37 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { GameList } from '@/components/GameList/GameList';
 import { SearchBar } from '@/components/SearchBar/SearchBar';
 import { api } from '@/services/api';
-import type { Game } from '@/types/api';
+import type { Game, Genre } from '@/types/api';
 import './Home.css';
 
 export const Home = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [games, setGames] = useState<Game[]>([]);
+  const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const genreScrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    loadGames();
+    loadData();
   }, []);
 
-  const loadGames = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await api.getGames();
-      setGames(data);
+      const [gamesData, genresData] = await Promise.all([
+        api.getGames(),
+        api.getGenres(),
+      ]);
+      setGames(gamesData);
+      setGenres(genresData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load games');
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -32,15 +39,28 @@ export const Home = () => {
 
   const handleSearch = (query: string) => {
     if (query.trim()) {
-      window.location.href = `/catalog?search=${encodeURIComponent(query)}`;
+      navigate(`/catalog?search=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleGenreClick = (genreId: number) => {
+    navigate(`/catalog?genre=${genreId}`);
+  };
+
+  const scrollGenres = (direction: 1 | -1) => {
+    if (genreScrollRef.current) {
+      const scrollAmount = genreScrollRef.current.offsetWidth * 0.8;
+      genreScrollRef.current.scrollBy({
+        left: direction * scrollAmount,
+        behavior: 'smooth',
+      });
     }
   };
 
   const featuredGames = games.slice(0, 4);
-  const topRatedGames = games
-    .sort((a, b) => b.rating - a.rating)
-    .slice(0, 8);
-  const allGenres = [...new Set(games.map(g => g.genre_id))];
+  const newReleases = [...games]
+    .sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime())
+    .slice(0, 6);
 
   if (loading) {
     return <div className="loading">{t('common.loading')}</div>;
@@ -50,7 +70,7 @@ export const Home = () => {
     return (
       <div className="error">
         <p>{error}</p>
-        <button onClick={loadGames} className="btn btn-primary">
+        <button onClick={loadData} className="btn btn-primary">
           {t('common.retry')}
         </button>
       </div>
@@ -99,48 +119,116 @@ export const Home = () => {
         </section>
       )}
 
-      <section className="section section-stats">
-        <div className="container">
-          <div className="stats-grid">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="stat-card"
-            >
-              <div className="stat-number">{games.length}</div>
-              <div className="stat-label">{t('home.totalGames')}</div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="stat-card"
-            >
-              <div className="stat-number">{allGenres.length}</div>
-              <div className="stat-label">{t('home.genres')}</div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="stat-card"
-            >
-              <div className="stat-number">{topRatedGames.length > 0 ? topRatedGames[0].rating.toFixed(1) : '0'}</div>
-              <div className="stat-label">{t('home.topRating')}</div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+      {genres.length > 0 && (
+        <section className="section section-genres">
+          <div className="container">
+            <h2 className="section-title">{t('home.browseByGenre')}</h2>
+            <div className="genre-scroll-wrapper">
+              <button className="scroll-btn left" onClick={() => scrollGenres(-1)}>
+                <svg width="24" height="24" viewBox="0 0 24 24">
+                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-      <section className="section">
-        <div className="container">
-          <GameList games={topRatedGames} title={t('home.topRated')} />
-        </div>
-      </section>
+              <motion.div className="genre-scroll" ref={genreScrollRef}>
+                {genres.map((genre) => (
+                  <motion.button
+                    key={genre.id}
+                    className="genre-card-horizontal"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleGenreClick(genre.id)}
+                  >
+                    <div className="genre-icon">{getGenreIcon(genre.name)}</div>
+                    <h3 className="genre-name">{genre.name}</h3>
+                    <div className="genre-count">
+                      {games.filter((g) => g.genre_id === genre.id).length} games
+                    </div>
+                  </motion.button>
+                ))}
+              </motion.div>
+
+              <button className="scroll-btn right" onClick={() => scrollGenres(1)}>
+                <svg width="24" height="24" viewBox="0 0 24 24">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {newReleases.length > 0 && (
+        <section className="section section-new-releases">
+          <div className="container">
+            <h2 className="section-title">{t('home.newReleases')}</h2>
+            <div className="new-releases-grid">
+              {newReleases.map((game) => (
+                <Link key={game.id} to={`/game/${game.id}`} className="release-card">
+                  <div className="release-image">
+                    <img
+                      src={`/images/games/small/${game.id}.jpg`}
+                      alt={game.title}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = `https://via.placeholder.com/400x225/1a1f26/3b82f6?text=${encodeURIComponent(game.title)}`;
+                      }}
+                    />
+                    <div className="release-badge">NEW</div>
+                  </div>
+                  <div className="release-info">
+                    <h3 className="release-title">{game.title}</h3>
+                    <div className="release-meta">
+                      <span className="release-rating">⭐ {game.rating.toFixed(1)}</span>
+                      <span className="release-price">₽{game.price.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
+
+// Genre icon mapping
+function getGenreIcon(genreName: string): string {
+  const icons: Record<string, string> = {
+    Action: '🎯',
+    Экшен: '🎯',
+    Adventure: '🗺️',
+    Приключение: '🗺️',
+    RPG: '⚔️',
+    РПГ: '⚔️',
+    Strategy: '🧠',
+    Стратегия: '🧠',
+    Simulation: '🎮',
+    Симулятор: '🎮',
+    Sports: '⚽',
+    Спорт: '⚽',
+    Racing: '🏎️',
+    Гонки: '🏎️',
+    Shooter: '🔫',
+    Шутер: '🔫',
+    Puzzle: '🧩',
+    Головоломка: '🧩',
+    Horror: '👻',
+    Хоррор: '👻',
+    Fighting: '🥊',
+    Файтинг: '🥊',
+    Platformer: '🪜',
+    Платформер: '🪜',
+    MOBA: '🛡️',
+    Sandbox: '🪣',
+    Песочница: '🪣'
+  };
+
+  for (const [key, icon] of Object.entries(icons)) {
+    if (genreName.toLowerCase().includes(key.toLowerCase())) {
+      return icon;
+    }
+  }
+
+  return '🎮';
+}

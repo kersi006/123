@@ -13,7 +13,7 @@ export const Login = () => {
 
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    name: '',
+    login: '',
     email: '',
     password: '',
   });
@@ -28,12 +28,12 @@ export const Login = () => {
     try {
       if (isLogin) {
         await api.login({
-          email: formData.email,
+          name: formData.login,
           password: formData.password,
         });
 
         const users = await api.getUsers();
-        const user = users.find((u) => u.email === formData.email);
+        const user = users.find((u) => u.name === formData.login);
 
         if (user) {
           setUser(user);
@@ -41,13 +41,13 @@ export const Login = () => {
         }
       } else {
         await api.register({
-          name: formData.name,
+          name: formData.login,
           email: formData.email,
           password: formData.password,
         });
 
         const users = await api.getUsers();
-        const user = users.find((u) => u.email === formData.email);
+        const user = users.find((u) => u.name === formData.login);
 
         if (user) {
           setUser(user);
@@ -72,7 +72,7 @@ export const Login = () => {
     setIsLogin(!isLogin);
     setError(null);
     setFormData({
-      name: '',
+      login: '',
       email: '',
       password: '',
     });
@@ -101,36 +101,36 @@ export const Login = () => {
           <form onSubmit={handleSubmit} className="login-form">
             {error && <div className="error-message">{error}</div>}
 
+            <div className="form-group">
+              <label htmlFor="login">{t('auth.login')}</label>
+              <input
+                type="text"
+                id="login"
+                name="login"
+                value={formData.login}
+                onChange={handleChange}
+                required
+                minLength={4}
+                className="form-input"
+                placeholder={t('auth.loginPlaceholder')}
+              />
+            </div>
+
             {!isLogin && (
               <div className="form-group">
-                <label htmlFor="name">{t('auth.name')}</label>
+                <label htmlFor="email">{t('auth.email')}</label>
                 <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
                   required
-                  minLength={4}
                   className="form-input"
-                  placeholder={t('auth.namePlaceholder')}
+                  placeholder={t('auth.emailPlaceholder')}
                 />
               </div>
             )}
-
-            <div className="form-group">
-              <label htmlFor="email">{t('auth.email')}</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="form-input"
-                placeholder={t('auth.emailPlaceholder')}
-              />
-            </div>
 
             <div className="form-group">
               <label htmlFor="password">{t('auth.password')}</label>

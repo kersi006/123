@@ -19,7 +19,7 @@ class UserAdd(BaseModel):
         return v
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    name: str
     password: str
 
 class Token(BaseModel):

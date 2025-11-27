@@ -166,7 +166,6 @@ export const Profile = () => {
           </div>
 
           <div className="tab-content">
-            {/* ----------------- Library ----------------- */}
             {activeTab === 'library' && (
               <div className="library-section">
                 <h2>{t('profile.library')}</h2>
@@ -199,7 +198,6 @@ export const Profile = () => {
               </div>
             )}
 
-            {/* ----------------- Orders ----------------- */}
             {activeTab === 'orders' && (
               <div className="orders-section">
                 <h2>{t('profile.orders')}</h2>
@@ -212,7 +210,6 @@ export const Profile = () => {
                     {orders.map((order) => (
                       <div key={order.id} className="order-card">
                         <div className="order-info">
-                          {/* Убрали строку с "Order History #1" */}
                           <Link to={`/game/${order.game_id}`} className="order-game">
                             {order.gameTitle}
                           </Link>
@@ -226,7 +223,6 @@ export const Profile = () => {
               </div>
             )}
 
-            {/* ----------------- Reviews ----------------- */}
             {activeTab === 'reviews' && (
               <div className="reviews-section">
                 <h2>{t('profile.reviews')}</h2>
@@ -257,13 +253,12 @@ export const Profile = () => {
               </div>
             )}
 
-            {/* ----------------- Settings ----------------- */}
             {activeTab === 'settings' && (
               <div className="settings-section">
                 <h2>{t('profile.settings')}</h2>
                 <div className="settings-form">
                   <div className="form-group">
-                    <label>{t('profile.name')}</label>
+                    <label>{t('profile.login')}</label>
                     <input type="text" value={currentUser.name} disabled className="form-input" />
                   </div>
 

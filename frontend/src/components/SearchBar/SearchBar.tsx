@@ -1,19 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import './SearchBar.css';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
+  value?: string;
 }
 
-export const SearchBar = ({ onSearch, placeholder }: SearchBarProps) => {
+export const SearchBar = ({ onSearch, placeholder, value }: SearchBarProps) => {
   const { t } = useTranslation();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value || '');
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setQuery(value);
+    }
+  }, [value]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(query);
+    onSearch(query.trim());
   };
 
   const handleClear = () => {

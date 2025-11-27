@@ -26,8 +26,8 @@ class AuthService:
 
     @staticmethod
     def login(data, session: Session):
-        user = session.exec(select(User).where(User.email == data.email)).first()
+        user = session.exec(select(User).where(User.name == data.name)).first()
         if not user or not verify_password(data.password, user.password_hash):
-            raise HTTPException(status_code=400, detail="Неверный email или пароль")
+            raise HTTPException(status_code=400, detail="Неверное имя пользователя или пароль")
 
         return create_access_token({"sub": str(user.id)})

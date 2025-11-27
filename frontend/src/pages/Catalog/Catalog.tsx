@@ -13,7 +13,6 @@ export const Catalog = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [games, setGames] = useState<Game[]>([]);
-  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
 
@@ -28,22 +27,27 @@ export const Catalog = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadInitialData();
   }, []);
 
   useEffect(() => {
-    filterAndSortGames();
-  }, [games, selectedGenre, selectedPlatform, minPrice, maxPrice, sortBy, searchQuery]);
+    const genreParam = searchParams.get('genre');
+    if (genreParam) {
+      setSelectedGenre(Number(genreParam));
+    }
+  }, [searchParams]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    searchAndFilterGames();
+  }, [selectedGenre, selectedPlatform, minPrice, maxPrice, sortBy, searchQuery]);
+
+  const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [gamesData, genresData, platformsData] = await Promise.all([
-        api.getGames(),
+      const [genresData, platformsData] = await Promise.all([
         api.getGenres(),
         api.getPlatforms(),
       ]);
-      setGames(gamesData);
       setGenres(genresData);
       setPlatforms(platformsData);
     } catch (err) {
@@ -53,56 +57,55 @@ export const Catalog = () => {
     }
   };
 
-  const filterAndSortGames = () => {
-    let filtered = [...games];
+  const searchAndFilterGames = async () => {
+    try {
+      setLoading(true);
+      let fetchedGames: Game[] = [];
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      if (searchQuery) {
+        fetchedGames = await api.searchGames(searchQuery);
+      } else {
+        fetchedGames = await api.getGames();
+      }
+
+      let filtered = [...fetchedGames];
+
+      if (selectedGenre !== null) {
+        filtered = filtered.filter((game) => game.genre_id === selectedGenre);
+      }
+
+      if (selectedPlatform !== null) {
+        filtered = filtered.filter((game) => game.platform_id === selectedPlatform);
+      }
+
       filtered = filtered.filter(
-        (game) =>
-          game.title.toLowerCase().includes(query) ||
-          game.description.toLowerCase().includes(query) ||
-          game.developer.toLowerCase().includes(query)
+        (game) => game.price >= minPrice && game.price <= maxPrice
       );
+
+      switch (sortBy) {
+        case 'newest':
+          filtered.sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime());
+          break;
+        case 'oldest':
+          filtered.sort((a, b) => new Date(a.release_date).getTime() - new Date(b.release_date).getTime());
+          break;
+        case 'price-asc':
+          filtered.sort((a, b) => a.price - b.price);
+          break;
+        case 'price-desc':
+          filtered.sort((a, b) => b.price - a.price);
+          break;
+        case 'rating':
+          filtered.sort((a, b) => b.rating - a.rating);
+          break;
+      }
+
+      setGames(filtered);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch games');
+    } finally {
+      setLoading(false);
     }
-
-    if (selectedGenre !== null) {
-      filtered = filtered.filter((game) => game.genre_id === selectedGenre);
-    }
-
-    if (selectedPlatform !== null) {
-      filtered = filtered.filter((game) => game.platform_id === selectedPlatform);
-    }
-
-    filtered = filtered.filter(
-      (game) => game.price >= minPrice && game.price <= maxPrice
-    );
-
-    switch (sortBy) {
-      case 'newest':
-        filtered.sort(
-          (a, b) =>
-            new Date(b.release_date).getTime() - new Date(a.release_date).getTime()
-        );
-        break;
-      case 'oldest':
-        filtered.sort(
-          (a, b) =>
-            new Date(a.release_date).getTime() - new Date(b.release_date).getTime()
-        );
-        break;
-      case 'price-asc':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-desc':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-    }
-
-    setFilteredGames(filtered);
   };
 
   const handleSearch = (query: string) => {
@@ -127,7 +130,7 @@ export const Catalog = () => {
     return (
       <div className="error">
         <p>{error}</p>
-        <button onClick={loadData} className="btn btn-primary">
+        <button onClick={searchAndFilterGames} className="btn btn-primary">
           {t('common.retry')}
         </button>
       </div>
@@ -139,7 +142,7 @@ export const Catalog = () => {
       <div className="container">
         <div className="catalog-header">
           <h1>{t('nav.catalog')}</h1>
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar onSearch={handleSearch} value={searchQuery} />
         </div>
 
         <div className="catalog-content">
@@ -162,10 +165,10 @@ export const Catalog = () => {
           <main className="catalog-main">
             <div className="catalog-results">
               <p className="results-count">
-                {filteredGames.length} {filteredGames.length === 1 ? t('common.gameFound') : t('common.gamesFound')}
+                {games.length} {games.length === 1 ? t('common.gameFound') : t('common.gamesFound')}
               </p>
             </div>
-            <GameList games={filteredGames} />
+            <GameList games={games} />
           </main>
         </div>
       </div>
